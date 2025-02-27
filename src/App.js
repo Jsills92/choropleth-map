@@ -66,7 +66,7 @@ function App() {
       .attr("d", path)
       .attr("fill", "none")
       .attr("stroke", "#000")
-      .attr("stroke-width", 1);
+      .attr("stroke-width", 2);
 
     d3.select("#tooltip").remove();
 
@@ -89,10 +89,10 @@ function App() {
 
     // Define a palette of soft pastel colors for the counties
     const softColors = [
-      "#8AA7B3", // Darker shade of Light SteelBlue
-      "#A2C8D5", // Darker shade of Lighter SteelBlue
-      "#BCC9D9", // Darker shade of Very light steelblue
-      "#C9E1EC", // Darker shade of Almost pastel steelblue
+      "#C9E1EC", // Lightest color (0-15%)
+      "#BCC9D9", // Next shade (16-30%)
+      "#A2C8D5", // Next shade (31-45%)
+      "#8AA7B3", // Darkest color (46-60%)
     ];
 
     // Draw counties and add tooltip behavior
@@ -103,8 +103,23 @@ function App() {
       .append("path")
       .attr("class", "county")
       .attr("d", path)
-      .attr("fill", (d, i) => softColors[i % softColors.length]) // Use the pastel shades in a repeating pattern
-      // Add data-fips and data-education attributes
+      .attr("fill", (d) => {
+        const countyData = data.educationData.find(
+          (county) => county.fips === d.id
+        );
+        const educationPercentage = countyData ? countyData.bachelorsOrHigher : 0;
+    
+        // Map the education percentage to a color from softColors
+        if (educationPercentage <= 15) {
+          return softColors[0]; // 0-15% -> Lightest color
+        } else if (educationPercentage <= 30) {
+          return softColors[1]; // 16-30% -> Second lightest color
+        } else if (educationPercentage <= 45) {
+          return softColors[2]; // 31-45% -> Third lightest color
+        } else {
+          return softColors[3]; // 46-60% -> Darkest color
+        }
+      })
       .attr("data-fips", (d) => {
         const countyData = data.educationData.find(
           (county) => county.fips === d.id
@@ -156,68 +171,57 @@ function App() {
         tooltip.style("visibility", "hidden");
       });
 
-    // Define the custom color scale for the percentage of people with a bachelor's degree
-    const colorScale = d3
-      .scaleLinear()
-      .domain([0, 20, 40, 60, 80, 100]) // Education percentage range (0% to 100%)
-      .range([
-        "#BCC9D9", // Lightest blue
-        "#C9E1EC", // Almost pastel steelblue
-        "#A2C8D5", // Darker shade of Lighter SteelBlue
-        "#8AA7B3", // Darker shade of Light SteelBlue
-        "#5F7585", // A deeper shade (optional)
-        "#3B4A53", // Even darker shade (optional)
-      ]); // Range of blue shades you defined earlier
 
 /* Need to fix the legend so that percentages actually line up with the colors of counties percentages */
 
-    // Define the legend color scale using the same thresholds
-    const legendScale = d3
-      .scaleLinear()
-      .domain([0, 100]) // Percentage range
-      .range([0, 300]); // Width of the legend bar
+const legendScale = d3.scaleLinear()
+  .domain([0, 15, 30, 45, 60]) // Set the domain to the ranges
+  .range([0, 100, 200, 300, 400]); // This sets the spacing of the ticks
 
-    const legendAxis = d3
-      .axisBottom(legendScale)
-      .tickSize(13)
-      .tickValues([0, 20, 40, 60, 80, 100]) // Add custom ticks at regular intervals (0%, 20%, 40%, etc.)
-      .tickFormat((d) => `${d}%`); // Format the ticks to show percentage
+// Create the legend
+const legend = svg.append("g")
+  .attr("class", "legend")
+  .attr("transform", "translate(600, 710)");
 
-    // Append the legend group
-    const legend = svg
-      .append("g")
-      .attr("id", "legend")
-      .attr("transform", `translate(600, 700)`); // Adjust position as needed
+// Add the legend color bar (gradient)
+legend.append("g")
+  .attr("class", "legendColor")
+  .selectAll("rect")
+  .data(softColors) // Use the same color array
+  .enter()
+  .append("rect")
+  .attr("x", (d, i) => legendScale([0, 15, 30, 45, 60][i])) // Position each color based on the range
+  .attr("width", 100)
+  .attr("height", 10)
+  .attr("fill", (d) => d);
 
-    // Add the colored rectangles for the legend using the predefined range of colors
-    legend
-      .selectAll("rect")
-      .data(colorScale.range()) // Use colorScale.range() directly
-      .enter()
-      .append("rect")
-      .attr("x", (d, i) =>
-        legendScale(i * (100 / (colorScale.range().length - 1)))
-      ) // Spread the colors across the range
-      .attr(
-        "width",
-        (d, i) =>
-          legendScale((i + 1) * (100 / (colorScale.range().length - 1))) -
-          legendScale(i * (100 / (colorScale.range().length - 1)))
-      )
-      .attr("height", 10)
-      .style("fill", (d) => d); // Use the color value directly for each rectangle
+// Add the legend ticks
+legend.append("g")
+  .attr("class", "legendTicks")
+  .selectAll("line")
+  .data([0, 15, 30, 45, 60]) // Ticks corresponding to the range values
+  .enter()
+  .append("line")
+  .attr("x1", (d) => legendScale(d))
+  .attr("x2", (d) => legendScale(d))
+  .attr("y1", 0)
+  .attr("y2", 10)
+  .attr("stroke", "#000");
 
-    // Append the axis for the legend
-    legend.call(legendAxis);
+// Add the labels to the ticks
+legend.append("g")
+  .attr("class", "legendLabels")
+  .selectAll("text")
+  .data([0, 15, 30, 45, 60]) // Labels corresponding to the range values
+  .enter()
+  .append("text")
+  .attr("x", (d) => legendScale(d))
+  .attr("y", 30)
+  .attr("text-anchor", "middle")
+  .text((d) => `${d}%`);
 
-    // Style the legend text and axis line
-    legend.select(".domain").remove(); // Remove axis line
 
-    legend
-      .selectAll("text")
-      .style("fill", "#000") // White text
-      .style("font-size", "12px");
-  }, [data]);
+}, [data]);
 
   if (loading) {
     return <div>Loading...</div>;
