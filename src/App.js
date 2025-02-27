@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef } from "react";
 import * as d3 from "d3";
-import { feature } from "topojson-client"; // Import topojson-feature function
+import { feature } from "topojson-client";
 import "./App.css";
 
 function App() {
   const svgRef = useRef();
   const [data, setData] = useState({ educationData: null, countyData: null });
-  const [loading, setLoading] = useState(true); // Add a loading state
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     // Use Promise.all to fetch both JSON files concurrently
@@ -19,28 +19,25 @@ function App() {
       ),
     ])
       .then(([educationResponse, countyResponse]) => {
-        // Convert both responses to JSON
         return Promise.all([educationResponse.json(), countyResponse.json()]);
       })
       .then(([educationJson, countyJson]) => {
-        // Convert Topology to GeoJSON using topojson
         const countiesGeoJson = feature(
           countyJson,
           countyJson.objects.counties
         );
-        const statesGeoJson = feature(countyJson, countyJson.objects.states); // Extract state boundaries
+        const statesGeoJson = feature(countyJson, countyJson.objects.states);
 
-        // Set the state with both data sets
         setData({
           educationData: educationJson,
           countyData: countiesGeoJson,
           stateData: statesGeoJson,
         });
-        setLoading(false); // Set loading to false once data has loaded
+        setLoading(false);
       })
       .catch((error) => {
         console.error("Error fetching data:", error);
-        setLoading(false); // Set loading to false even if there was an error
+        setLoading(false);
       });
   }, []);
 
@@ -55,12 +52,9 @@ function App() {
       .select(svgRef.current)
       .attr("width", width)
       .attr("height", height)
-      .style("display", "block") // Ensure no extra space around the SVG
-      .style("margin", "0 auto") // Center horizontally
-      .attr("viewBox", `0 0 ${width} ${height}`); // Preserve aspect ratio
+      .attr("viewBox", `0 0 ${width - 200} ${height}`);
 
-    // Manually scale and center the map based on the bounding box
-    const path = d3.geoPath(); // No projection applied
+    const path = d3.geoPath();
 
     // Draw states first
     svg
@@ -70,11 +64,28 @@ function App() {
       .append("path")
       .attr("class", "state")
       .attr("d", path)
-      .attr("fill", "#f0f0f0")
+      .attr("fill", "none")
       .attr("stroke", "#000")
       .attr("stroke-width", 1);
 
-    // Draw counties
+    // Tooltip creation
+    const tooltip = d3
+      .select("body")
+      .append("div")
+      .attr("id", "tooltip")
+      .style("position", "absolute")
+      .style("visibility", "hidden")
+      .style("background-color", "#222831")
+      .style("border-radius", "5px")
+      .style("padding", "5px 10px")
+      .style("font-size", "10px")
+      .style("color", "#EEEEEE")
+      .style("z-index", "10")
+      .style("max-width", "200px") // Limiting the width of the tooltip
+      .style("max-height", "150px") // Limit height if the content becomes long
+      .style("overflow", "auto"); // Allow scrolling if content overflows
+
+    // Draw counties and add tooltip behavior
     svg
       .selectAll(".county")
       .data(data.countyData.features)
@@ -82,13 +93,43 @@ function App() {
       .append("path")
       .attr("class", "county")
       .attr("d", path)
-      .attr("fill", "#d1d1d1")
-      .attr("stroke", "#ffffff")
-      .attr("stroke-width", 0.7);
+      .attr("fill", "#4682b4")
+      .on("mouseover", function (event, d) {
+        // Find matching education data for the county
+        const countyEducationData = data.educationData.find(
+          (county) => county.fips === d.id
+        );
+
+        // Show tooltip with education data
+        d3.select(this).raise().attr("stroke", "#000").attr("stroke-width", 2);
+
+        // Set the tooltip content and make it visible
+        tooltip.style("visibility", "visible").html(`
+            <strong>County:</strong> ${
+              countyEducationData ? countyEducationData.area_name : "Unknown"
+            }<br>
+            <strong>Education Level:</strong> ${
+              countyEducationData
+                ? countyEducationData.bachelorsOrHigher
+                : "N/A"
+            }%<br>
+            <strong>FIPS Code:</strong> ${d.id}
+          `);
+
+        // Position the tooltip near the mouse cursor
+        tooltip
+          .style("top", event.pageY + 10 + "px")
+          .style("left", event.pageX + 10 + "px");
+      })
+      .on("mouseout", function () {
+        // Remove the stroke and hide the tooltip
+        d3.select(this).attr("stroke", "none");
+        tooltip.style("visibility", "hidden");
+      });
   }, [data]);
 
   if (loading) {
-    return <div>Loading...</div>; // Show loading while fetching data
+    return <div>Loading...</div>;
   }
 
   return (
