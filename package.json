@@ -1,6 +1,7 @@
 {
   "name": "choropleth-map",
   "version": "0.1.0",
+  "homepage": "https://username.github.io/choropleth-map",
   "private": true,
   "dependencies": {
     "@testing-library/dom": "^10.4.0",
