@@ -68,6 +68,8 @@ function App() {
       .attr("stroke", "#000")
       .attr("stroke-width", 1);
 
+    d3.select("#tooltip").remove();
+
     // Tooltip creation
     const tooltip = d3
       .select("body")
@@ -85,6 +87,14 @@ function App() {
       .style("max-height", "150px") // Limit height if the content becomes long
       .style("overflow", "auto"); // Allow scrolling if content overflows
 
+    // Define a palette of soft pastel colors for the counties
+    const softColors = [
+      "#8AA7B3", // Darker shade of Light SteelBlue
+      "#A2C8D5", // Darker shade of Lighter SteelBlue
+      "#BCC9D9", // Darker shade of Very light steelblue
+      "#C9E1EC", // Darker shade of Almost pastel steelblue
+    ];
+
     // Draw counties and add tooltip behavior
     svg
       .selectAll(".county")
@@ -93,7 +103,20 @@ function App() {
       .append("path")
       .attr("class", "county")
       .attr("d", path)
-      .attr("fill", "#4682b4")
+      .attr("fill", (d, i) => softColors[i % softColors.length]) // Use the pastel shades in a repeating pattern
+      // Add data-fips and data-education attributes
+      .attr("data-fips", (d) => {
+        const countyData = data.educationData.find(
+          (county) => county.fips === d.id
+        );
+        return countyData ? countyData.fips : null;
+      })
+      .attr("data-education", (d) => {
+        const countyData = data.educationData.find(
+          (county) => county.fips === d.id
+        );
+        return countyData ? countyData.bachelorsOrHigher : null;
+      })
       .on("mouseover", function (event, d) {
         // Find matching education data for the county
         const countyEducationData = data.educationData.find(
@@ -104,7 +127,13 @@ function App() {
         d3.select(this).raise().attr("stroke", "#000").attr("stroke-width", 2);
 
         // Set the tooltip content and make it visible
-        tooltip.style("visibility", "visible").html(`
+        tooltip
+          .style("visibility", "visible")
+          .attr(
+            "data-education",
+            countyEducationData ? countyEducationData.bachelorsOrHigher : null
+          ).html( // Use the correct data field
+        `
             <strong>County:</strong> ${
               countyEducationData ? countyEducationData.area_name : "Unknown"
             }<br>
@@ -126,6 +155,66 @@ function App() {
         d3.select(this).attr("stroke", "none");
         tooltip.style("visibility", "hidden");
       });
+
+    // Define the custom color scale for the percentage of people with a bachelor's degree
+    const colorScale = d3
+      .scaleLinear()
+      .domain([0, 20, 40, 60, 80, 100]) // Education percentage range (0% to 100%)
+      .range([
+        "#BCC9D9", // Lightest blue
+        "#C9E1EC", // Almost pastel steelblue
+        "#A2C8D5", // Darker shade of Lighter SteelBlue
+        "#8AA7B3", // Darker shade of Light SteelBlue
+        "#5F7585", // A deeper shade (optional)
+        "#3B4A53", // Even darker shade (optional)
+      ]); // Range of blue shades you defined earlier
+
+    // Define the legend color scale using the same thresholds
+    const legendScale = d3
+      .scaleLinear()
+      .domain([0, 100]) // Percentage range
+      .range([0, 300]); // Width of the legend bar
+
+    const legendAxis = d3
+      .axisBottom(legendScale)
+      .tickSize(13)
+      .tickValues([0, 20, 40, 60, 80, 100]) // Add custom ticks at regular intervals (0%, 20%, 40%, etc.)
+      .tickFormat((d) => `${d}%`); // Format the ticks to show percentage
+
+    // Append the legend group
+    const legend = svg
+      .append("g")
+      .attr("id", "legend")
+      .attr("transform", `translate(600, 700)`); // Adjust position as needed
+
+    // Add the colored rectangles for the legend using the predefined range of colors
+    legend
+      .selectAll("rect")
+      .data(colorScale.range()) // Use colorScale.range() directly
+      .enter()
+      .append("rect")
+      .attr("x", (d, i) =>
+        legendScale(i * (100 / (colorScale.range().length - 1)))
+      ) // Spread the colors across the range
+      .attr(
+        "width",
+        (d, i) =>
+          legendScale((i + 1) * (100 / (colorScale.range().length - 1))) -
+          legendScale(i * (100 / (colorScale.range().length - 1)))
+      )
+      .attr("height", 10)
+      .style("fill", (d) => d); // Use the color value directly for each rectangle
+
+    // Append the axis for the legend
+    legend.call(legendAxis);
+
+    // Style the legend text and axis line
+    legend.select(".domain").remove(); // Remove axis line
+
+    legend
+      .selectAll("text")
+      .style("fill", "#000") // White text
+      .style("font-size", "12px");
   }, [data]);
 
   if (loading) {
