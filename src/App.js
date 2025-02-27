@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import * as d3 from "d3";
 import { feature } from "topojson-client"; // Import topojson-feature function
-import './App.css';
+import "./App.css";
 
 function App() {
   const svgRef = useRef();
@@ -11,8 +11,12 @@ function App() {
   useEffect(() => {
     // Use Promise.all to fetch both JSON files concurrently
     Promise.all([
-      fetch("https://cdn.freecodecamp.org/testable-projects-fcc/data/choropleth_map/for_user_education.json"),
-      fetch("https://cdn.freecodecamp.org/testable-projects-fcc/data/choropleth_map/counties.json")
+      fetch(
+        "https://cdn.freecodecamp.org/testable-projects-fcc/data/choropleth_map/for_user_education.json"
+      ),
+      fetch(
+        "https://cdn.freecodecamp.org/testable-projects-fcc/data/choropleth_map/counties.json"
+      ),
     ])
       .then(([educationResponse, countyResponse]) => {
         // Convert both responses to JSON
@@ -20,13 +24,18 @@ function App() {
       })
       .then(([educationJson, countyJson]) => {
         // Convert Topology to GeoJSON using topojson
-        const countiesGeoJson = feature(countyJson, countyJson.objects.counties);
+        const countiesGeoJson = feature(
+          countyJson,
+          countyJson.objects.counties
+        );
         const statesGeoJson = feature(countyJson, countyJson.objects.states); // Extract state boundaries
-        console.log("County JSON Objects Available:", Object.keys(countyJson.objects));
-        console.log("First few counties:", countiesGeoJson.features.slice(0, 5));
 
         // Set the state with both data sets
-        setData({ educationData: educationJson, countyData: countiesGeoJson, stateData: statesGeoJson });
+        setData({
+          educationData: educationJson,
+          countyData: countiesGeoJson,
+          stateData: statesGeoJson,
+        });
         setLoading(false); // Set loading to false once data has loaded
       })
       .catch((error) => {
@@ -36,22 +45,24 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (!data || !data.educationData || !data.countyData || !data.stateData) return;
+    if (!data.educationData || !data.countyData || !data.stateData) return;
 
-    const margin = { top: 20, right: 20, bottom: 20, left: 20 }; // Adjusted margins for better centering
+    const margin = { top: 20, right: 20, bottom: 20, left: 20 };
     const width = 1200 - margin.left - margin.right;
     const height = 800 - margin.top - margin.bottom;
 
     const svg = d3
       .select(svgRef.current)
-      .attr("viewBox", `0 0 ${width + margin.left + margin.right} ${height + margin.top + margin.bottom}`)
-      .style("margin", "0 auto"); // Centering the SVG
+      .attr("width", width)
+      .attr("height", height)
+      .style("display", "block") // Ensure no extra space around the SVG
+      .style("margin", "0 auto") // Center horizontally
+      .attr("viewBox", `0 0 ${width} ${height}`); // Preserve aspect ratio
 
-    // Set up the map projection using geoAlbersUsa
-    const projection = d3.geoAlbersUsa().scale(1000).translate([width / 2, height / 2]);
-    const path = d3.geoPath().projection(projection); // Use the path with the projection
+    // Manually scale and center the map based on the bounding box
+    const path = d3.geoPath(); // No projection applied
 
-    // Draw the states first as outlines with a fill to see them
+    // Draw states first
     svg
       .selectAll(".state")
       .data(data.stateData.features)
@@ -59,12 +70,12 @@ function App() {
       .append("path")
       .attr("class", "state")
       .attr("d", path)
-      .attr("fill", "#f0f0f0") // Add a fill color for visibility
+      .attr("fill", "#f0f0f0")
       .attr("stroke", "#000")
       .attr("stroke-width", 1);
 
-    // Draw the counties afterward
-    /*svg
+    // Draw counties
+    svg
       .selectAll(".county")
       .data(data.countyData.features)
       .enter()
@@ -74,20 +85,6 @@ function App() {
       .attr("fill", "#d1d1d1")
       .attr("stroke", "#ffffff")
       .attr("stroke-width", 0.7);
-      */
-
-    // Add graticule (latitude/longitude lines)
-    const graticule = d3.geoGraticule();
-
-    svg
-      .append("path")
-      .datum(graticule)
-      .attr("class", "graticule")
-      .attr("d", path) // Use geoPath to create path for graticule
-      .attr("fill", "none")
-      .attr("stroke", "#ccc")
-      .attr("stroke-width", 0.5);
-
   }, [data]);
 
   if (loading) {
@@ -96,7 +93,11 @@ function App() {
 
   return (
     <div>
-      <h1>Choropleth Map</h1>
+      <h1 id="title">United States Educational Attainment</h1>
+      <h2 id="description">
+        Percentage of adults age 25 and older with a bachelor's degree or higher
+        (2010-2014)
+      </h2>
       <svg ref={svgRef}></svg>
     </div>
   );

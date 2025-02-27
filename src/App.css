@@ -1,35 +1,22 @@
-.App {
+
+#title, #description {
   text-align: center;
 }
 
-header {
-  margin-bottom: 20px;
+svg {
+  display: block;
+  margin: 0 auto; /* Centers the map horizontally */
+  max-width: 100%; /* Ensures map resizes responsively */
+  height: auto; /* Maintain aspect ratio */
 }
 
-#choropleth-map {
-  width: 100%;
-  height: 500px;
+
+
+.county {
+  stroke: #fff; /* White border */
+  stroke-width: 0.5;
+  fill: steelblue; /* Temporary fill to make counties visible */
 }
 
-#tooltip {
-  background-color: #f8f8f8;
-  padding: 10px;
-  border: 1px solid #ccc;
-  border-radius: 5px;
-  box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
-  font-size: 14px;
-  color: #333;
-}
 
-.legend {
-  display: flex;
-  justify-content: center;
-  margin-top: 20px;
-}
 
-.legend div {
-  height: 20px;
-  width: 20px;
-  display: inline-block;
-  margin-right: 5px;
-}
