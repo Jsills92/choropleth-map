@@ -169,6 +169,8 @@ function App() {
         "#3B4A53", // Even darker shade (optional)
       ]); // Range of blue shades you defined earlier
 
+/* Need to fix the legend so that percentages actually line up with the colors of counties percentages */
+
     // Define the legend color scale using the same thresholds
     const legendScale = d3
       .scaleLinear()
